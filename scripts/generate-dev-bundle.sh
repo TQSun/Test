@@ -41,12 +41,28 @@ rm -rf "${MONGO_NAME}"
 export PATH="$DIR/bin:$PATH"
 
 cd "$DIR/lib"
+
+# Make sure the latest version of node-gyp is installed at the top level.
+npm install node-gyp
+
 # Overwrite the bundled version with the latest version of npm.
 npm install "npm@$NPM_VERSION"
 
 which node
 which npm
 npm version
+
+fix_node_gyp () {
+    pushd "$DIR/lib/node_modules"
+    rm -rf npm/test
+    rm -rf npm/node_modules/node-gyp
+    cd npm/node_modules
+    # Make sure npm uses the node-gyp we install at the top level.
+    ln -s ../../node-gyp ./
+    popd
+}
+
+fix_node_gyp
 
 # When adding new node modules (or any software) to the dev bundle,
 # remember to update LICENSE.txt! Also note that we include all the
@@ -90,6 +106,7 @@ mkdir "${DIR}/build/npm-tool-install"
 cd "${DIR}/build/npm-tool-install"
 node "${CHECKOUT_DIR}/scripts/dev-bundle-tool-package.js" >package.json
 npm install
+fix_node_gyp
 cp -R node_modules/* "${DIR}/lib/node_modules/"
 # Also include node_modules/.bin, so that `meteor npm` can make use of
 # commands like node-gyp and node-pre-gyp.
@@ -119,12 +136,6 @@ delete () {
     fi
     rm -rf "$1"
 }
-
-delete npm/test
-delete npm/node_modules/node-gyp
-pushd npm/node_modules
-ln -s ../../node-gyp ./
-popd
 
 delete sqlite3/deps
 delete sqlite3/node_modules/node-pre-gyp
